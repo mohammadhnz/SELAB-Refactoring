@@ -51,32 +51,27 @@ public class Parser {
                 Log.print(currentAction.toString());
                 //Log.print("");
 
-                switch (currentAction.action) {
-                    case shift:
-                        parsStack.push(currentAction.number);
-                        lookAhead = lexicalAnalyzer.getNextToken();
+                if (currentAction.getClass().equals(ShiftAction.class)) {
+                    parsStack.push(currentAction.number);
+                    lookAhead = lexicalAnalyzer.getNextToken();
+                } else if (currentAction.getClass().equals(ReduceAction.class)) {
+                    Rule rule = rules.get(currentAction.number);
+                    for (int i = 0; i < rule.RHS.size(); i++) {
+                        parsStack.pop();
+                    }
 
-                        break;
-                    case reduce:
-                        Rule rule = rules.get(currentAction.number);
-                        for (int i = 0; i < rule.RHS.size(); i++) {
-                            parsStack.pop();
-                        }
-
-                        Log.print(/*"state : " +*/ parsStack.peek() + "\t" + rule.LHS);
+                    Log.print(/*"state : " +*/ parsStack.peek() + "\t" + rule.LHS);
 //                        Log.print("LHS : "+rule.LHS);
-                        parsStack.push(parseTable.getGotoTable(parsStack.peek(), rule.LHS));
-                        Log.print(/*"new State : " + */parsStack.peek() + "");
+                    parsStack.push(parseTable.getGotoTable(parsStack.peek(), rule.LHS));
+                    Log.print(/*"new State : " + */parsStack.peek() + "");
 //                        Log.print("");
-                        try {
-                            cg.semanticFunction(rule.semanticAction, lookAhead);
-                        } catch (Exception e) {
-                            Log.print("Code Genetator Error");
-                        }
-                        break;
-                    case accept:
-                        finish = true;
-                        break;
+                    try {
+                        cg.semanticFunction(rule.semanticAction, lookAhead);
+                    } catch (Exception e) {
+                        Log.print("Code Genetator Error");
+                    }
+                } else if (currentAction.getClass().equals(AcceptAction.class)) {
+                    finish = true;
                 }
                 Log.print("");
             } catch (Exception ignored) {
