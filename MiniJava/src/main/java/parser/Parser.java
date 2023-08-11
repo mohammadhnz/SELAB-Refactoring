@@ -7,13 +7,13 @@ import java.util.ArrayList;
 import java.util.Stack;
 
 import Log.Log;
-import codeGenerator.CodeGenerator;
 import codeGenerator.CodeGeneratorFacade;
 import errorHandler.ErrorHandler;
 import scanner.lexicalAnalyzer;
 import scanner.token.Token;
 
 public class Parser {
+    private final ActionHandler actionHandler = new ActionHandler(this);
     private ArrayList<Rule> rules;
     private Stack<Integer> parsStack;
     private ParseTable parseTable;
@@ -71,11 +71,11 @@ public class Parser {
                 currentAction = parseTable.getActionTable(parsStack.peek(), lookAhead);
                 Log.print(currentAction.toString());
                 if (currentAction.getClass().equals(ShiftAction.class)) {
-                    lookAhead = handleShift(currentAction);
+                    lookAhead = actionHandler.handleShift(currentAction);
                 } else if (currentAction.getClass().equals(ReduceAction.class)) {
-                    handleReduce(currentAction, lookAhead);
+                    actionHandler.handleReduce(currentAction, lookAhead);
                 } else if (currentAction.getClass().equals(AcceptAction.class)) {
-                    finish = handleAccept();
+                    finish = ActionHandler.handleAccept();
                 }
                 Log.print("");
             } catch (Exception ignored) {
@@ -85,31 +85,11 @@ public class Parser {
         if (!ErrorHandler.hasError) codeGeneratorFacade.printMemory();
     }
 
-    private static boolean handleAccept() {
-        boolean finish;
-        finish = true;
-        return finish;
-    }
-
     private void handleReduce(Action currentAction, Token lookAhead) {
-        Rule rule = rules.get(currentAction.number);
-        for (int i = 0; i < rule.RHS.size(); i++) {
-            parsStack.pop();
-        }
-        Log.print(/*"state : " +*/ parsStack.peek() + "\t" + rule.LHS);
-        parsStack.push(parseTable.getGotoTable(parsStack.peek(), rule.LHS));
-        Log.print(/*"new State : " + */parsStack.peek() + "");
-        try {
-            codeGeneratorFacade.semanticFunction(rule.semanticAction, lookAhead);
-        } catch (Exception e) {
-            Log.print("Code Genetator Error");
-        }
+        actionHandler.handleReduce(currentAction, lookAhead);
     }
 
     private Token handleShift(Action currentAction) {
-        Token lookAhead;
-        parsStack.push(currentAction.number);
-        lookAhead = lexicalAnalyzer.getNextToken();
-        return lookAhead;
+        return actionHandler.handleShift(currentAction);
     }
 }
