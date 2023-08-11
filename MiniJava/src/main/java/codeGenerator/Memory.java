@@ -21,8 +21,11 @@ public class Memory {
     }
 
     public int getTemp() {
+        return lastTempIndex;
+    }
+
+    public void moveTempIndex() {
         lastTempIndex += tempSize;
-        return lastTempIndex - tempSize;
     }
 
     public int getDateAddress() {
