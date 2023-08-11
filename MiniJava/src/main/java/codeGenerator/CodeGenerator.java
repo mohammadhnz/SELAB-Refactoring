@@ -3,9 +3,8 @@ package codeGenerator;
 import Log.Log;
 import errorHandler.ErrorHandler;
 import scanner.token.Token;
-import semantic.symbol.Symbol;
-import semantic.symbol.SymbolTable;
-import semantic.symbol.SymbolType;
+import semantic.symbol.SemanticSymbolFacade;
+import types.Tuple;
 
 import java.util.Stack;
 
@@ -17,11 +16,10 @@ public class CodeGenerator {
     private Stack<Address> ss = new Stack<Address>();
     private Stack<String> symbolStack = new Stack<>();
     private Stack<String> callStack = new Stack<>();
-    private SymbolTable symbolTable;
+    private SemanticSymbolFacade semanticSymbolFacade;
 
     public CodeGenerator() {
-        symbolTable = new SymbolTable(memory);
-        //TODO
+        semanticSymbolFacade = new SemanticSymbolFacade(memory);
     }
 
     public void printMemory() {
@@ -124,10 +122,10 @@ public class CodeGenerator {
                 defParam();
                 break;
             case 31:
-                lastTypeBool();
+                semanticSymbolFacade.setLastTypeBool();
                 break;
             case 32:
-                lastTypeInt();
+                semanticSymbolFacade.setLastTypeInt();
                 break;
             case 33:
                 defMain();
@@ -141,15 +139,13 @@ public class CodeGenerator {
         String methodName = "main";
         String className = symbolStack.pop();
 
-        symbolTable.addMethod(className, methodName, memory.getCurrentCodeBlockAddress());
+        semanticSymbolFacade.addMethod(className, methodName);
 
         symbolStack.push(className);
         symbolStack.push(methodName);
     }
 
-    //    public void spid(Token next){
-//        symbolStack.push(next.value);
-//    }
+
     public void checkID() {
         symbolStack.pop();
         if (ss.peek().varType == varType.Non) {
@@ -162,20 +158,8 @@ public class CodeGenerator {
             String methodName = symbolStack.pop();
             String className = symbolStack.pop();
             try {
-
-                Symbol s = symbolTable.get(className, methodName, next.value);
-                varType t = varType.Int;
-                switch (s.type) {
-                    case Bool:
-                        t = varType.Bool;
-                        break;
-                    case Int:
-                        t = varType.Int;
-                        break;
-                }
-                ss.push(new Address(s.address, t));
-
-
+                Tuple<Integer, varType> result = semanticSymbolFacade.getAddressAndType(className, methodName, next.value);
+                ss.push(new Address(result.item1, result.item2));
             } catch (Exception e) {
                 ss.push(new Address(0, varType.Non));
             }
@@ -191,22 +175,13 @@ public class CodeGenerator {
         ss.pop();
         ss.pop();
 
-        Symbol s = symbolTable.get(symbolStack.pop(), symbolStack.pop());
-        varType t = varType.Int;
-        switch (s.type) {
-            case Bool:
-                t = varType.Bool;
-                break;
-            case Int:
-                t = varType.Int;
-                break;
-        }
-        ss.push(new Address(s.address, t));
+        Tuple<Integer, varType> result = semanticSymbolFacade.getAddressAndType(symbolStack.pop(), symbolStack.pop());
+        ss.push(new Address(result.item1, result.item2));
 
     }
 
     public void kpid(Token next) {
-        ss.push(symbolTable.get(next.value));
+        ss.push(semanticSymbolFacade.get(next.value));
     }
 
     public void intpid(Token next) {
@@ -219,7 +194,7 @@ public class CodeGenerator {
         ss.pop();
         String methodName = symbolStack.pop();
         String className = symbolStack.pop();
-        symbolTable.startCall(className, methodName);
+        semanticSymbolFacade.startCall(className, methodName);
         callStack.push(className);
         callStack.push(methodName);
 
@@ -231,25 +206,17 @@ public class CodeGenerator {
         String methodName = callStack.pop();
         String className = callStack.pop();
         try {
-            symbolTable.getNextParam(className, methodName);
+            semanticSymbolFacade.getNextParam(className, methodName);
             ErrorHandler.printError("The few argument pass for method");
         } catch (IndexOutOfBoundsException e) {
         }
-        varType t = varType.Int;
-        switch (symbolTable.getMethodReturnType(className, methodName)) {
-            case Int:
-                t = varType.Int;
-                break;
-            case Bool:
-                t = varType.Bool;
-                break;
-        }
+        varType t = semanticSymbolFacade.getMethodReturnType(className, methodName);
         Address temp = new Address(memory.getTemp(), t);
         memory.moveTempIndex();
         ss.push(temp);
-        memory.add3AddressCode(Operation.ASSIGN, new Address(temp.num, varType.Address, TypeAddress.Imidiate), new Address(symbolTable.getMethodReturnAddress(className, methodName), varType.Address), null);
-        memory.add3AddressCode(Operation.ASSIGN, new Address(memory.getCurrentCodeBlockAddress() + 2, varType.Address, TypeAddress.Imidiate), new Address(symbolTable.getMethodCallerAddress(className, methodName), varType.Address), null);
-        memory.add3AddressCode(Operation.JP, new Address(symbolTable.getMethodAddress(className, methodName), varType.Address), null, null);
+        memory.add3AddressCode(Operation.ASSIGN, new Address(temp.num, varType.Address, TypeAddress.Imidiate), new Address(semanticSymbolFacade.getMethodReturnAddress(className, methodName), varType.Address), null);
+        memory.add3AddressCode(Operation.ASSIGN, new Address(memory.getCurrentCodeBlockAddress() + 2, varType.Address, TypeAddress.Imidiate), new Address(semanticSymbolFacade.getMethodCallerAddress(className, methodName), varType.Address), null);
+        memory.add3AddressCode(Operation.JP, new Address(semanticSymbolFacade.getMethodAddress(className, methodName), varType.Address), null, null);
 
         //symbolStack.pop();
     }
@@ -260,21 +227,12 @@ public class CodeGenerator {
         String methodName = callStack.pop();
 //        String className = symbolStack.pop();
         try {
-            Symbol s = symbolTable.getNextParam(callStack.peek(), methodName);
-            varType t = varType.Int;
-            switch (s.type) {
-                case Bool:
-                    t = varType.Bool;
-                    break;
-                case Int:
-                    t = varType.Int;
-                    break;
-            }
+            Tuple<Integer, varType> result = semanticSymbolFacade.getNextParamAddressAndType(callStack.peek(), methodName);
             Address param = ss.pop();
-            if (param.varType != t) {
+            if (param.varType != result.item2) {
                 ErrorHandler.printError("The argument type isn't match");
             }
-            memory.add3AddressCode(Operation.ASSIGN, param, new Address(s.address, t), null);
+            memory.add3AddressCode(Operation.ASSIGN, param, new Address(result.item1, result.item2), null);
 
 //        symbolStack.push(className);
 
@@ -414,7 +372,7 @@ public class CodeGenerator {
 
     public void defClass() {
         ss.pop();
-        symbolTable.addClass(symbolStack.peek());
+        semanticSymbolFacade.addClass(symbolStack.peek());
     }
 
     public void defMethod() {
@@ -422,7 +380,7 @@ public class CodeGenerator {
         String methodName = symbolStack.pop();
         String className = symbolStack.pop();
 
-        symbolTable.addMethod(className, methodName, memory.getCurrentCodeBlockAddress());
+        semanticSymbolFacade.addMethod(className, methodName, memory.getCurrentCodeBlockAddress());
 
         symbolStack.push(className);
         symbolStack.push(methodName);
@@ -434,12 +392,12 @@ public class CodeGenerator {
 
     public void extend() {
         ss.pop();
-        symbolTable.setSuperClass(symbolStack.pop(), symbolStack.peek());
+        semanticSymbolFacade.setSuperClass(symbolStack.pop(), symbolStack.peek());
     }
 
     public void defField() {
         ss.pop();
-        symbolTable.addField(symbolStack.pop(), symbolStack.peek());
+        semanticSymbolFacade.addField(symbolStack.pop(), symbolStack.peek());
     }
 
     public void defVar() {
@@ -449,7 +407,7 @@ public class CodeGenerator {
         String methodName = symbolStack.pop();
         String className = symbolStack.pop();
 
-        symbolTable.addMethodLocalVariable(className, methodName, var);
+        semanticSymbolFacade.addMethodLocalVariable(className, methodName, var);
 
         symbolStack.push(className);
         symbolStack.push(methodName);
@@ -460,19 +418,12 @@ public class CodeGenerator {
 
         String methodName = symbolStack.pop();
         Address s = ss.pop();
-        SymbolType t = symbolTable.getMethodReturnType(symbolStack.peek(), methodName);
-        varType temp = varType.Int;
-        switch (t) {
-            case Int:
-                break;
-            case Bool:
-                temp = varType.Bool;
-        }
+        varType temp = semanticSymbolFacade.getMethodReturnType(symbolStack.peek(), methodName);
         if (s.varType != temp) {
             ErrorHandler.printError("The type of method and return address was not match");
         }
-        memory.add3AddressCode(Operation.ASSIGN, s, new Address(symbolTable.getMethodReturnAddress(symbolStack.peek(), methodName), varType.Address, TypeAddress.Indirect), null);
-        memory.add3AddressCode(Operation.JP, new Address(symbolTable.getMethodCallerAddress(symbolStack.peek(), methodName), varType.Address), null, null);
+        memory.add3AddressCode(Operation.ASSIGN, s, new Address(semanticSymbolFacade.getMethodReturnAddress(symbolStack.peek(), methodName), varType.Address, TypeAddress.Indirect), null);
+        memory.add3AddressCode(Operation.JP, new Address(semanticSymbolFacade.getMethodCallerAddress(symbolStack.peek(), methodName), varType.Address), null, null);
 
         //symbolStack.pop();
     }
@@ -484,18 +435,10 @@ public class CodeGenerator {
         String methodName = symbolStack.pop();
         String className = symbolStack.pop();
 
-        symbolTable.addMethodParameter(className, methodName, param);
+        semanticSymbolFacade.addMethodParameter(className, methodName, param);
 
         symbolStack.push(className);
         symbolStack.push(methodName);
-    }
-
-    public void lastTypeBool() {
-        symbolTable.setLastType(SymbolType.Bool);
-    }
-
-    public void lastTypeInt() {
-        symbolTable.setLastType(SymbolType.Int);
     }
 
     public void main() {
