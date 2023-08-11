@@ -8,9 +8,6 @@ import types.Tuple;
 
 import java.util.Stack;
 
-/**
- * Created by Alireza on 6/27/2015.
- */
 public class CodeGenerator {
     private Memory memory = new Memory();
     private Stack<Address> ss = new Stack<Address>();
@@ -202,7 +199,6 @@ public class CodeGenerator {
     }
 
     public void call() {
-        //TODO: method ok
         String methodName = callStack.pop();
         String className = callStack.pop();
         try {
@@ -217,15 +213,10 @@ public class CodeGenerator {
         memory.add3AddressCode(Operation.ASSIGN, new Address(temp.num, varType.Address, TypeAddress.Imidiate), new Address(semanticSymbolFacade.getMethodReturnAddress(className, methodName), varType.Address), null);
         memory.add3AddressCode(Operation.ASSIGN, new Address(memory.getCurrentCodeBlockAddress() + 2, varType.Address, TypeAddress.Imidiate), new Address(semanticSymbolFacade.getMethodCallerAddress(className, methodName), varType.Address), null);
         memory.add3AddressCode(Operation.JP, new Address(semanticSymbolFacade.getMethodAddress(className, methodName), varType.Address), null, null);
-
-        //symbolStack.pop();
     }
 
     public void arg() {
-        //TODO: method ok
-
         String methodName = callStack.pop();
-//        String className = symbolStack.pop();
         try {
             Tuple<Integer, varType> result = semanticSymbolFacade.getNextParamAddressAndType(callStack.peek(), methodName);
             Address param = ss.pop();
@@ -233,8 +224,6 @@ public class CodeGenerator {
                 ErrorHandler.printError("The argument type isn't match");
             }
             memory.add3AddressCode(Operation.ASSIGN, param, new Address(result.item1, result.item2), null);
-
-//        symbolStack.push(className);
 
         } catch (IndexOutOfBoundsException e) {
             ErrorHandler.printError("Too many arguments pass for method");
@@ -246,14 +235,9 @@ public class CodeGenerator {
     public void assign() {
         Address s1 = ss.pop();
         Address s2 = ss.pop();
-//        try {
         if (s1.varType != s2.varType) {
             ErrorHandler.printError("The type of operands in assign is different ");
         }
-//        }catch (NullPointerException d)
-//        {
-//            d.printStackTrace();
-//        }
         memory.add3AddressCode(Operation.ASSIGN, s1, s2, null);
     }
 
@@ -291,7 +275,6 @@ public class CodeGenerator {
             ErrorHandler.printError("In mult two operands must be integer");
         }
         memory.add3AddressCode(Operation.MULT, s1, s2, temp);
-//        memory.saveMemory();
         ss.push(temp);
     }
 
@@ -379,9 +362,7 @@ public class CodeGenerator {
         ss.pop();
         String methodName = symbolStack.pop();
         String className = symbolStack.pop();
-
         semanticSymbolFacade.addMethod(className, methodName, memory.getCurrentCodeBlockAddress());
-
         symbolStack.push(className);
         symbolStack.push(methodName);
     }
@@ -402,20 +383,15 @@ public class CodeGenerator {
 
     public void defVar() {
         ss.pop();
-
         String var = symbolStack.pop();
         String methodName = symbolStack.pop();
         String className = symbolStack.pop();
-
         semanticSymbolFacade.addMethodLocalVariable(className, methodName, var);
-
         symbolStack.push(className);
         symbolStack.push(methodName);
     }
 
     public void methodReturn() {
-        //TODO : call ok
-
         String methodName = symbolStack.pop();
         Address s = ss.pop();
         varType temp = semanticSymbolFacade.getMethodReturnType(symbolStack.peek(), methodName);
@@ -424,19 +400,14 @@ public class CodeGenerator {
         }
         memory.add3AddressCode(Operation.ASSIGN, s, new Address(semanticSymbolFacade.getMethodReturnAddress(symbolStack.peek(), methodName), varType.Address, TypeAddress.Indirect), null);
         memory.add3AddressCode(Operation.JP, new Address(semanticSymbolFacade.getMethodCallerAddress(symbolStack.peek(), methodName), varType.Address), null, null);
-
-        //symbolStack.pop();
     }
 
     public void defParam() {
-        //TODO : call Ok
         ss.pop();
         String param = symbolStack.pop();
         String methodName = symbolStack.pop();
         String className = symbolStack.pop();
-
         semanticSymbolFacade.addMethodParameter(className, methodName, param);
-
         symbolStack.push(className);
         symbolStack.push(methodName);
     }
