@@ -75,7 +75,7 @@ public class Parser {
                 } else if (currentAction.getClass().equals(ReduceAction.class)) {
                     actionHandler.handleReduce(currentAction, lookAhead);
                 } else if (currentAction.getClass().equals(AcceptAction.class)) {
-                    finish = ActionHandler.handleAccept();
+                    finish = actionHandler.handleAccept();
                 }
                 Log.print("");
             } catch (Exception ignored) {

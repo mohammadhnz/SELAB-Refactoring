@@ -10,10 +10,8 @@ public class ActionHandler {
         this.parser = parser;
     }
 
-    static boolean handleAccept() {
-        boolean finish;
-        finish = true;
-        return finish;
+    public boolean handleAccept() {
+        return true;
     }
 
     void handleReduce(Action currentAction, Token lookAhead) {
