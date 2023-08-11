@@ -17,6 +17,27 @@ public class Parser {
     private ArrayList<Rule> rules;
     private Stack<Integer> parsStack;
     private ParseTable parseTable;
+
+    public ArrayList<Rule> getRules() {
+        return rules;
+    }
+
+    public Stack<Integer> getParsStack() {
+        return parsStack;
+    }
+
+    public ParseTable getParseTable() {
+        return parseTable;
+    }
+
+    public scanner.lexicalAnalyzer getLexicalAnalyzer() {
+        return lexicalAnalyzer;
+    }
+
+    public CodeGeneratorFacade getCodeGeneratorFacade() {
+        return codeGeneratorFacade;
+    }
+
     private lexicalAnalyzer lexicalAnalyzer;
     private CodeGeneratorFacade codeGeneratorFacade;
 
